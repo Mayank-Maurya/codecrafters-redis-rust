@@ -12,8 +12,8 @@ fn main() {
     for stream in listener.incoming() {
         match stream {
             Ok(mut stream) => {
-            let mut reader = BufReader::new(stream.try_clone().unwrap());
             loop {
+                let mut reader = BufReader::new(&stream);
                 let mut input: String = String::new();
 
                 match reader.read_line(&mut input) {
@@ -21,7 +21,7 @@ fn main() {
                         break;
                     },
                     Ok(_) => {
-                        stream.write_all(b"+PONG\r\n");
+                        stream.write(b"+PONG\r\n");
                     },
                     Err(e) =>  {
                         println!("{}", e);

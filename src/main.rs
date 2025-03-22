@@ -17,12 +17,12 @@ fn main() {
                 input = String::new();
                 stdin.read_line(&mut input).unwrap();
                 let commands: Vec<&str> = input.split_ascii_whitespace().collect();
-                let mut response;
+                // let mut response;
 
-                match commands[1] {
-                    "PING" => response = "+PONG\r\n",
-                    _ => response = "unknown command",
-                }
+                // match commands[1] {
+                //     "PING" => response = "+PONG\r\n",
+                //     _ => response = "unknown command",
+                // }
 
                 let _err = _stream.write(b"+PONG\r\n");
             }

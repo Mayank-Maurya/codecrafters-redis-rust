@@ -24,7 +24,7 @@ fn main() {
                     _ => response = "unknown command",
                 }
 
-                _stream.write_all(response.as_bytes());
+                let _err = _stream.write(response.as_bytes());
             }
             Err(e) => {
                 println!("error: {}", e);

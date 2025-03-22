@@ -12,17 +12,19 @@ fn main() {
     
     for stream in listener.incoming() {
         match stream {
-            Ok(_stream) => {
+            Ok(mut _stream) => {
                 // take input
                 input = String::new();
                 stdin.read_line(&mut input).unwrap();
                 let commands: Vec<&str> = input.split_ascii_whitespace().collect();
+                let mut response;
 
                 match commands[1] {
-                    "PING" => println!("PONG"),
-                    _ => println!("unknown command"),
+                    "PING" => response = "PONG",
+                    _ => response = "unknown command",
                 }
 
+                _stream.write_all(response.as_bytes());
             }
             Err(e) => {
                 println!("error: {}", e);

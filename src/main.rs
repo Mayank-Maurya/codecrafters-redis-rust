@@ -6,7 +6,7 @@ fn main() {
 
     let stdin = io::stdin();
     let mut input;
-    let listener = TcpListener::bind("127.0.0.1:6380").unwrap();
+    let listener = TcpListener::bind("127.0.0.1:6379").unwrap();
     print!("$ ");
     io::stdout().flush().unwrap();
     

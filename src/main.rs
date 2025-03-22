@@ -20,11 +20,11 @@ fn main() {
                 let mut response;
 
                 match commands[1] {
-                    "PING" => response = "PONG",
+                    "PING" => response = "+PONG\r\n",
                     _ => response = "unknown command",
                 }
 
-                let _err = _stream.write(response.as_bytes());
+                let _err = _stream.write(b"+PONG\r\n");
             }
             Err(e) => {
                 println!("error: {}", e);

@@ -22,6 +22,7 @@ fn main() {
                     },
                     Ok(_) => {
                         stream.write(b"+PONG\r\n");
+                        stream.flush();
                     },
                     Err(e) =>  {
                         println!("{}", e);

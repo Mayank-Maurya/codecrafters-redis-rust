@@ -1,35 +1,34 @@
 #![allow(unused_imports)]
 use std::rc::Rc;
-use std::{env};
 use std::io::{self, BufRead, Read, Write};
-use tokio::net::TcpListener;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::{TcpListener, TcpStream};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 
 #[tokio::main]
-async fn main() {
-    let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
+async fn main() -> io::Result<()> {
+    let listener = TcpListener::bind("127.0.0.1:6379").await?;
 
     loop {
-        let (mut socket, _) = listener.accept().await.unwrap();
-
+        let (mut socket, _) = listener.accept().await?;
         tokio::spawn(async move {
-            loop { 
-                let mut reader = BufReader::new(&mut socket);
-                let mut input = String::new();
-                input.clear();
-
-                match reader.read_line(&mut input).await {
+            let mut buf = [0; 1024];
+    
+            loop {
+                let n = match socket.read(&mut buf).await {
                     Ok(0) => {
-                        break;
+                        return
                     },
-                    Ok(_) => {
-                        socket.write(b"+PONG\r\n");
-                    },
-                    Err(e) =>  {
-                        println!("{}", e);
+                    Ok(n) => n,
+                    Err(e) => {
+                        eprintln!("failed to read from socket; err = {:?}", e);
+                        return;
                     }
+                };
+    
+                if let Err(e) = socket.write_all(&buf[0..n]).await {
+                    eprintln!("failed to write to socket; err = {:?}", e);
+                    return;
                 }
-
             }
         });
     }

@@ -21,8 +21,7 @@ fn main() {
                         break;
                     },
                     Ok(_) => {
-                        stream.write(b"+PONG\r\n");
-                        stream.flush();
+                        stream.write_all(b"+PONG\r\n");
                     },
                     Err(e) =>  {
                         println!("{}", e);

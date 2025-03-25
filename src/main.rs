@@ -148,7 +148,7 @@ async fn main() -> io::Result<()> {
                 println!("Client Connected");
 
                 tokio::spawn(async move {
-                    let mut buf: BytesMut = BytesMut::new();
+                    let mut buf = [0;512];
             
                     loop {
                         match stream.read(&mut buf).await {

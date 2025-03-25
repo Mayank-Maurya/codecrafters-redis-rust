@@ -36,7 +36,27 @@ impl From<std::io::Error> for RESPError {
     }
 }
 
+#[derive(Debug)]
+pub enum RedisValueRef {
+    String(Bytes),
+    Error(Bytes),
+    Int(i64),
+    Array(Vec<RedisValueRef>),
+    NullArray,
+    NullBulkString,
+    ErrorMsg(Vec<u8>),
+}
+
 type RedisResult = Result<Option<(usize, RESPTypes)>, RESPError>;
+
+impl RESPTypes {
+    fn get_value(self, buf: &Bytes) -> RedisValueRef {
+        match self {
+            RESPTypes::String(bfs) => RedisValueRef::String( buf.slice(bfs.0..bfs.1)),
+            _ => RedisValueRef::ErrorMsg([0].to_vec()),
+        }
+    }
+}
 
 fn word(buf: &BytesMut, pos: usize) -> Option<(usize, BufSplit)> {
     if buf.len() <= pos {
@@ -73,10 +93,11 @@ fn parse(buf: &BytesMut, pos: usize) -> Result<Option<(usize, RESPTypes)>, RESPE
 
 }
 
+#[derive(Default)]
 pub struct RespParser;
 
 impl Decoder for RespParser {
-    type Item = RESPTypes;
+    type Item = RedisValueRef;
     type Error = RESPError;
     fn decode(&mut self, buf: &mut bytes::BytesMut) -> Result<Option<Self::Item>, Self::Error> {
 
@@ -86,64 +107,86 @@ impl Decoder for RespParser {
 
         match parse(buf,0)? {
             Some((pos,value)) => {
+                let data = buf.split_to(pos);
+
                 println!("{:?}",value);
-                Ok(None)
+                Ok(Some(value.get_value(&data.freeze())))
             },
             None => Ok(None),
         }
     }
 }
 
-impl Encoder<RESPTypes> for RespParser {
+impl Encoder<RedisValueRef> for RespParser {
     type Error = io::Error;
-
-    fn encode(&mut self, item: RESPTypes, dst: &mut BytesMut) -> io::Result<()> {
+    fn encode(&mut self, item: RedisValueRef, dst: &mut BytesMut) -> io::Result<()> {
         write_resp_output(item, dst);
         Ok(())
     }
 }
 
-fn write_resp_output(item: RESPTypes, dst: &mut BytesMut) {
+fn write_resp_output(item: RedisValueRef, dst: &mut BytesMut) {
     match item {
-        RESPTypes::String(s) => {
-            // TODO
+        RedisValueRef::String(s) => {
             dst.extend_from_slice(b"+");
-            // dst.extend_from_slice(&s);
+            dst.extend_from_slice(&s);
             dst.extend_from_slice(b"\r\n");
         },
-        _ => todo!()
+        _ => println!(" not done yet")
     }
 }
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:6379").await?;
+    let listener = TcpListener::bind("127.0.0.1:6380").await?;
 
     loop {
-        let (mut socket, _) = listener.accept().await?;
-        tokio::spawn(async move {
-            let mut buf: BytesMut = BytesMut::new();
-    
-            loop {
-                match socket.read(&mut buf).await {
-                    Ok(0) => {
-                        return
-                    },
-                    Ok(n) => n,
-                    Err(e) => {
-                        eprintln!("failed to read from socket; err = {:?}", e);
-                        return;
+        let stream = listener.accept().await;
+
+        match stream {
+            Ok((mut stream, _)) => {
+                println!("Client Connected");
+
+                tokio::spawn(async move {
+                    let mut buf: BytesMut = BytesMut::new();
+            
+                    loop {
+                        match stream.read(&mut buf).await {
+                            Ok(0) => {
+                                // println!("nothing came");
+                            },
+                            Ok(n) => {
+                                let received = String::from_utf8_lossy(&buf[..n]);
+                                println!("Received: {}", received);
+
+                                // let mut decoder = RespParser::default();
+                                // let result: Result<Option<RedisValueRef>, RESPError> = decoder.decode(&mut buf);
+                                if let Err(e) = stream.write_all(&buf[..n]).await {
+                                    eprintln!("Failed to write to stream: {}", e);
+                                }
+                            },
+                            Err(e) => {
+                                eprintln!("failed to read from stream; err = {:?}", e);
+                                return;
+                            }
+                        };
+                        // println!("{:?}", buf.len());
+                        
+                        // todo parsing here decode and process then encode and write the data to stream
+
+        
+                        // println!("{:?}",result)
+                        // if let Err(e) = stream.write_all(b"+PONG\r\n").await {
+                        //     eprintln!("failed to write to stream; err = {:?}", e);
+                        //     return;
+                        // }
                     }
-                };
-                
-                // todo parsing here decode and process then encode and write the data to socket
-                todo!();
-    
-                // if let Err(e) = socket.write_all(b"+PONG\r\n").await {
-                //     eprintln!("failed to write to socket; err = {:?}", e);
-                //     return;
-                // }
+                });
+
+            },
+            Err(e) => {
+                println!("error: {}", e);
             }
-        });
+        }
     }
 }

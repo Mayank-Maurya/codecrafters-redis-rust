@@ -153,7 +153,7 @@ async fn main() -> io::Result<()> {
                     loop {
                         match stream.read(&mut buf).await {
                             Ok(0) => {
-                                // println!("nothing came");
+                                println!("nothing came");
                             },
                             Ok(n) => {
                                 let received = String::from_utf8_lossy(&buf[..n]);
@@ -170,7 +170,7 @@ async fn main() -> io::Result<()> {
                                 return;
                             }
                         };
-                        // println!("{:?}", buf.len());
+                        println!("{:?}", buf);
                         
                         // todo parsing here decode and process then encode and write the data to stream
 

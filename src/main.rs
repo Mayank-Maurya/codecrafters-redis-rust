@@ -158,6 +158,7 @@ async fn main() -> io::Result<()> {
                             Ok(n) => {
                                 let received = String::from_utf8_lossy(&buf[..n]);
                                 println!("Received: {}", received);
+                                println!("came");
 
                                 // let mut decoder = RespParser::default();
                                 // let result: Result<Option<RedisValueRef>, RESPError> = decoder.decode(&mut buf);
@@ -170,7 +171,6 @@ async fn main() -> io::Result<()> {
                                 return;
                             }
                         };
-                        println!("{:?}", buf);
                         
                         // todo parsing here decode and process then encode and write the data to stream
 

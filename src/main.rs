@@ -1,15 +1,27 @@
 #![allow(unused_imports)]
+use std::collections::HashMap;
 use std::ops::Add;
 use std::rc::Rc;
 use std::io::{self, BufRead, Error, Read, Write};
+use std::time::{SystemTime, UNIX_EPOCH};
 use bytes::{Bytes, BytesMut};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio_util::codec::{Decoder, Encoder};
 use memchr::memchr;
 
+use std::sync::{LazyLock, Mutex};
+
+static GLOBAL_HASHMAP: LazyLock<Mutex<HashMap<String, Value>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 #[derive(Debug)]
 struct BufSplit(usize, usize);
+
+#[derive(Debug, Clone)]
+struct Value {
+    value: String,
+    px: u128,
+    updated_time: u128,
+}
 
 #[derive(Debug)]
 pub enum RESPTypes {
@@ -41,7 +53,7 @@ type RedisResult = Result<Option<(usize, RESPTypes)>, RESPError>;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:6379").await?;
+    let listener = TcpListener::bind("127.0.0.1:6380").await?;
 
     loop {
         let stream = listener.accept().await;
@@ -160,7 +172,7 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
     match value {
         RESPTypes::Array(v) => {
             let mut ans: Vec<u8> = Vec::new();
-            println!("{}",v[0]);
+            // println!("{}",v[0]);
             match v[0].as_str() {
                 "ECHO" => {
                     let length = v[1].len(); // Get the length of the string
@@ -176,10 +188,51 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                 "PING" => {
                     ans.extend_from_slice(b"+PONG\r\n");
                     return ans;
+                },
+                "SET" => {
+                    let val = Value{ value: v[2].clone(), px: 0, updated_time: current_timestamp_millis(),};
+                    map_insert(v[1].clone(), val);
+                    //GLOBAL_HASHMAP[v.get_mut(0)] = v[1].clone();
+                    ans.extend_from_slice(b"OK\r\n");
+                    return ans;
+                },
+                "GET" => {
+                    let key = v[1].clone();
+                    let length = map_get(key).unwrap().value.len(); // Get the length of the string
+                    let length_str = length.to_string(); // Convert the length to a string
+                    let length_bytes = length_str.as_bytes(); 
+                    ans.extend_from_slice(b"$");
+                    ans.extend_from_slice(length_bytes);
+                    ans.extend_from_slice(b"\r\n");
+                    ans.extend_from_slice(v[1].as_bytes());
+                    ans.extend_from_slice(b"\r\n");
+                    return ans;
                 }
                 _ => todo!(),
             }
         },
         _ => todo!(),
     }
+}
+
+fn map_insert(key: String, value: Value) {
+    if let Ok(mut hashmap) = GLOBAL_HASHMAP.lock() {
+        hashmap.insert(key, value);
+    } else {
+        eprintln!("Failed to acquire lock on GLOBAL_HASHMAP");
+    }
+}
+
+fn map_get(key: String) -> Option<Value> {
+    if let Ok(hashmap) = GLOBAL_HASHMAP.lock() {
+        return hashmap.get(&key).cloned();
+    }
+    None
+}
+
+fn current_timestamp_millis() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_millis()
 }

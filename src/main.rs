@@ -190,7 +190,10 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                     return ans;
                 },
                 "SET" => {
-                    let val = Value{ value: v[2].clone(), px: 0, updated_time: current_timestamp_millis(),};
+                    let mut val = Value{ value: v[2].clone(), px: 0, updated_time: current_timestamp_millis(),};
+                    if v.len() > 3 {
+                        val.px = v[4].clone().parse::<u128>().unwrap();
+                    }
                     map_insert(v[1].clone(), val);
                     //GLOBAL_HASHMAP[v.get_mut(0)] = v[1].clone();
                     ans.extend_from_slice(b"+OK\r\n");
@@ -199,6 +202,11 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                 "GET" => {
                     let key = v[1].clone();
                     let val = map_get(key).unwrap();
+                    let cur_time = current_timestamp_millis();
+                    if cur_time - val.updated_time > val.px {
+                        ans.extend_from_slice(b"$-1\r\n");
+                        return ans;
+                    }
                     let length = val.value.len(); // Get the length of the string
                     let length_str = length.to_string(); // Convert the length to a string
                     let length_bytes = length_str.as_bytes(); 

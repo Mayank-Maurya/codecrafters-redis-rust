@@ -198,13 +198,14 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                 },
                 "GET" => {
                     let key = v[1].clone();
-                    let length = map_get(key).unwrap().value.len(); // Get the length of the string
+                    let val = map_get(key).unwrap();
+                    let length = val.value.len(); // Get the length of the string
                     let length_str = length.to_string(); // Convert the length to a string
                     let length_bytes = length_str.as_bytes(); 
                     ans.extend_from_slice(b"$");
                     ans.extend_from_slice(length_bytes);
                     ans.extend_from_slice(b"\r\n");
-                    ans.extend_from_slice(v[1].as_bytes());
+                    ans.extend_from_slice(val.value.as_bytes());
                     ans.extend_from_slice(b"\r\n");
                     return ans;
                 }

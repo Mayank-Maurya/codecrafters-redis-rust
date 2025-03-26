@@ -204,7 +204,7 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                     let val = map_get(key).unwrap();
                     println!("{:?}", val);
                     let cur_time = current_timestamp_millis();
-                    if cur_time - val.updated_time > val.px {
+                    if val.px != 0 || cur_time - val.updated_time > val.px {
                         ans.extend_from_slice(b"$-1\r\n");
                         return ans;
                     }

@@ -193,7 +193,7 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                     let val = Value{ value: v[2].clone(), px: 0, updated_time: current_timestamp_millis(),};
                     map_insert(v[1].clone(), val);
                     //GLOBAL_HASHMAP[v.get_mut(0)] = v[1].clone();
-                    ans.extend_from_slice(b"OK\r\n");
+                    ans.extend_from_slice(b"+OK\r\n");
                     return ans;
                 },
                 "GET" => {

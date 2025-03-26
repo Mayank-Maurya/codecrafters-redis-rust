@@ -53,7 +53,7 @@ type RedisResult = Result<Option<(usize, RESPTypes)>, RESPError>;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:6380").await?;
+    let listener = TcpListener::bind("127.0.0.1:6379").await?;
 
     loop {
         let stream = listener.accept().await;

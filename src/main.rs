@@ -68,7 +68,7 @@ async fn main() -> io::Result<()> {
                     loop {
                         match stream.read(&mut buf).await {
                             Ok(0) => {
-                                println!("nothing came");
+                                // println!("nothing came");
                             },
                             Ok(n) => {
                                 // parse the string and get the result
@@ -202,6 +202,7 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                 "GET" => {
                     let key = v[1].clone();
                     let val = map_get(key).unwrap();
+                    println!("{:?}", val);
                     let cur_time = current_timestamp_millis();
                     if cur_time - val.updated_time > val.px {
                         ans.extend_from_slice(b"$-1\r\n");

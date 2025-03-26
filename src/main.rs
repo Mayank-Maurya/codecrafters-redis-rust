@@ -214,10 +214,12 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
     match value {
         RESPTypes::Array(v) => {
             if v[0] == "ECHO" {
-                let x = v[1].len().clone() as u8;
+                let length = v[1].len(); // Get the length of the string
+                let length_str = length.to_string(); // Convert the length to a string
+                let length_bytes = length_str.as_bytes(); 
                 let mut ans: Vec<u8> = Vec::new();
                 ans.extend_from_slice(b"$");
-                ans.extend_from_slice(&[x]);
+                ans.extend_from_slice(length_bytes);
                 ans.extend_from_slice(b"\r\n");
                 ans.extend_from_slice(v[1].as_bytes());
                 ans.extend_from_slice(b"\r\n");

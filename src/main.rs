@@ -252,7 +252,7 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                             } else {
                                 return ans;
                             }
-                            let length = &value; // Get the length of the string
+                            let length = value.len().clone(); // Get the length of the string
                             let length_str = length.to_string(); // Convert the length to a string
                             let length_bytes = length_str.as_bytes(); 
                             ans.extend_from_slice(b"$");

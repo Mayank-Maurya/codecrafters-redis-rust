@@ -78,7 +78,7 @@ async fn main() -> io::Result<()> {
         }
     }
 
-    let listener = TcpListener::bind("127.0.0.1:6379").await?;
+    let listener = TcpListener::bind("127.0.0.1:6380").await?;
 
     loop {
         let stream = listener.accept().await;
@@ -246,21 +246,25 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                 "CONFIG" => {
                     match v[1].as_str() {
                         "GET" => {
-                            let mut value;
+                            let value: String;
                             if let Ok(hashmap) = GLOBAL_HASHMAP_CONFIG.lock() {
                                 value = hashmap.get(&v[2]).cloned().unwrap();
                             } else {
                                 return ans;
                             }
-                            let length = value.len().clone(); // Get the length of the string
-                            let length_str = length.to_string(); // Convert the length to a string
-                            let length_bytes = length_str.as_bytes(); 
-                            ans.extend_from_slice(b"$");
-                            ans.extend_from_slice(length_bytes);
-                            ans.extend_from_slice(b"\r\n");
-                            ans.extend_from_slice(&value.as_bytes());
-                            ans.extend_from_slice(b"\r\n");
-                            return ans;
+                            let mut args = Vec::new();
+                            args.push(v[2].clone());
+                            args.push(value);
+                            return encode_array(args);
+                            // let length = value.len().clone(); // Get the length of the string
+                            // let length_str = length.to_string(); // Convert the length to a string
+                            // let length_bytes = length_str.as_bytes(); 
+                            // ans.extend_from_slice(b"$");
+                            // ans.extend_from_slice(length_bytes);
+                            // ans.extend_from_slice(b"\r\n");
+                            // ans.extend_from_slice(&value.as_bytes());
+                            // ans.extend_from_slice(b"\r\n");
+                            // return ans;
                         },
                         _ => todo!()
                     }
@@ -270,6 +274,27 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
         },
         _ => todo!(),
     }
+}
+
+fn encode_array(array: Vec<String>) -> Vec<u8> {
+    let mut ans = Vec::new();
+    let mut length = array.len(); // Get the length of the string
+    let mut length_str = length.to_string(); // Convert the length to a string
+    let mut length_bytes = length_str.as_bytes(); 
+    ans.extend_from_slice(b"$");
+    ans.extend_from_slice(length_bytes);
+    ans.extend_from_slice(b"\r\n");
+    for i in array {
+        length = i.len();
+        length_str = length.to_string();
+        length_bytes = length_str.as_bytes();
+        ans.extend_from_slice(b"$");
+        ans.extend_from_slice(length_bytes);
+        ans.extend_from_slice(b"\r\n");
+        ans.extend_from_slice(i.as_bytes());
+        ans.extend_from_slice(b"\r\n");
+    }
+    return ans;
 }
 
 fn map_insert(key: String, value: Value) {

@@ -1,5 +1,6 @@
 #![allow(unused_imports)]
 use std::collections::HashMap;
+use std::env;
 use std::ops::Add;
 use std::rc::Rc;
 use std::io::{self, BufRead, Error, Read, Write};
@@ -9,10 +10,11 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio_util::codec::{Decoder, Encoder};
 use memchr::memchr;
-
 use std::sync::{LazyLock, Mutex};
 
 static GLOBAL_HASHMAP: LazyLock<Mutex<HashMap<String, Value>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+static GLOBAL_HASHMAP_CONFIG: LazyLock<Mutex<HashMap<String, String>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+
 #[derive(Debug)]
 struct BufSplit(usize, usize);
 
@@ -53,6 +55,28 @@ type RedisResult = Result<Option<(usize, RESPTypes)>, RESPError>;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
+    let args: Vec<String> = env::args().collect();
+    for i in 1..args.len() {
+        match args[i].as_str() {
+            "--dir" => {
+                if let Ok(mut hashmap) = GLOBAL_HASHMAP_CONFIG.lock() {
+                    hashmap.insert("dir".to_string(), args[i+1].clone());
+                } else {
+                    eprintln!("Failed to acquire lock on GLOBAL_HASHMAP_CONFIG");
+                }
+            },
+            "--dbfilename" => {
+                if let Ok(mut hashmap) = GLOBAL_HASHMAP_CONFIG.lock() {
+                    hashmap.insert("dbfilename".to_string(), args[i+1].clone());
+                } else {
+                    eprintln!("Failed to acquire lock on GLOBAL_HASHMAP_CONFIG");
+                }
+            },
+            _ => {
+            }
+        }
+    }
+
     let listener = TcpListener::bind("127.0.0.1:6379").await?;
 
     loop {
@@ -217,6 +241,28 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                     ans.extend_from_slice(val.value.as_bytes());
                     ans.extend_from_slice(b"\r\n");
                     return ans;
+                },
+                "CONFIG" => {
+                    match v[1].as_str() {
+                        "GET" => {
+                            let mut value;
+                            if let Ok(hashmap) = GLOBAL_HASHMAP_CONFIG.lock() {
+                                value = hashmap.get(v[1].as_str()).cloned().unwrap();
+                            } else {
+                                return ans;
+                            }
+                            let length = &value; // Get the length of the string
+                            let length_str = length.to_string(); // Convert the length to a string
+                            let length_bytes = length_str.as_bytes(); 
+                            ans.extend_from_slice(b"$");
+                            ans.extend_from_slice(length_bytes);
+                            ans.extend_from_slice(b"\r\n");
+                            ans.extend_from_slice(&value.as_bytes());
+                            ans.extend_from_slice(b"\r\n");
+                            return ans;
+                        },
+                        _ => todo!()
+                    }
                 }
                 _ => todo!(),
             }

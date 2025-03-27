@@ -281,7 +281,7 @@ fn encode_array(array: Vec<String>) -> Vec<u8> {
     let mut length = array.len(); // Get the length of the string
     let mut length_str = length.to_string(); // Convert the length to a string
     let mut length_bytes = length_str.as_bytes(); 
-    ans.extend_from_slice(b"$");
+    ans.extend_from_slice(b"*");
     ans.extend_from_slice(length_bytes);
     ans.extend_from_slice(b"\r\n");
     for i in array {

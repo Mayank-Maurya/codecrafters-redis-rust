@@ -78,7 +78,7 @@ async fn main() -> io::Result<()> {
         }
     }
 
-    let listener = TcpListener::bind("127.0.0.1:6379").await?;
+    let listener = TcpListener::bind("127.0.0.1:6380").await?;
 
     loop {
         let stream = listener.accept().await;
@@ -256,19 +256,18 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                             args.push(v[2].clone());
                             args.push(value);
                             return encode_array(args);
-                            // let length = value.len().clone(); // Get the length of the string
-                            // let length_str = length.to_string(); // Convert the length to a string
-                            // let length_bytes = length_str.as_bytes(); 
-                            // ans.extend_from_slice(b"$");
-                            // ans.extend_from_slice(length_bytes);
-                            // ans.extend_from_slice(b"\r\n");
-                            // ans.extend_from_slice(&value.as_bytes());
-                            // ans.extend_from_slice(b"\r\n");
-                            // return ans;
                         },
                         _ => todo!()
                     }
-                }
+                },
+                "KEYS" => {
+                    match v[1].as_str() {
+                        "*" => {
+                            todo!()
+                        },
+                        _ => todo!()
+                    }
+                },
                 _ => todo!(),
             }
         },

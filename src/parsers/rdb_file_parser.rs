@@ -66,6 +66,7 @@ fn parse_rdb_file(file_buffer: Vec<u8>) {
             println!("File content as string:\n{}", content);
         }
         Err(e) => {
+            // doing
             println!("Failed to convert file buffer to string: {:?}", e);
         }
     }

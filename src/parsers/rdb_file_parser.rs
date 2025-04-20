@@ -1,9 +1,32 @@
-use std::{fs::File, io::Read};
+use std::{fs::File, io::Read, path::{Path, PathBuf}};
 use crate::{utils::utils::map_get, GLOBAL_HASHMAP_CONFIG};
 
 pub fn parse() {
-    let file_path = map_get(&GLOBAL_HASHMAP_CONFIG, String::from("value")).unwrap();
-    match get_rdb_file(file_path) {
+    // get file dir
+    let file_path = match map_get(&GLOBAL_HASHMAP_CONFIG, String::from("dir")) {
+        Some(path) => {
+            path
+        },
+        None => {
+            println!("could not get file_path");
+            return;
+        },
+    };
+    // get file name
+    let file_name = match map_get(&GLOBAL_HASHMAP_CONFIG, String::from("dbfilename")) {
+        Some(file_name) => {
+            file_name
+        },
+        None => {
+            println!("could not get file_name");
+            return;
+        },
+    };
+    // get full file path
+    let full_path = PathBuf::from(file_path).join(file_name);
+    
+    // get file
+    match get_rdb_file(full_path.to_string_lossy().into_owned()) {
         Ok(file_buffer) => {
             parse_rdb_file(file_buffer);
         },
@@ -14,10 +37,17 @@ pub fn parse() {
 }
 
 fn get_rdb_file(file_path: String) -> std::io::Result<Vec<u8>> {
-    let mut file = File::open(file_path)?;
+    let mut file = match File::open(file_path) {
+        Ok(file) => {
+            file
+        },
+        Err(e) => {
+            println!("file not found: {:?}", e);
+            return Err(e);
+        }
+    };
     let mut buffer: Vec<u8>  = Vec::new();
-    let file_red = file.read_to_end(&mut buffer);
-    println!("RDB File contents: {:?}", buffer);
+    file.read_to_end(&mut buffer);
     Ok(buffer)
 }
 

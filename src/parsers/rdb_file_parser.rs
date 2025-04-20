@@ -46,11 +46,27 @@ fn get_rdb_file(file_path: String) -> std::io::Result<Vec<u8>> {
             return Err(e);
         }
     };
-    let mut buffer: Vec<u8>  = Vec::new();
+    let mut buffer: Vec<u8> = Vec::new();
     file.read_to_end(&mut buffer);
     Ok(buffer)
 }
 
 fn parse_rdb_file(file_buffer: Vec<u8>) {
     println!("file_buffer: {:?}", file_buffer);
+    let hex_string: String = file_buffer
+        .iter()
+        .map(|byte| format!("{:02x}", byte)) // Format each byte as a two-digit hexadecimal
+        .collect();
+
+    println!("File content as hexadecimal:\n{}", hex_string);
+
+    // Optionally, convert the hexadecimal string back to a regular string (if needed)
+    match String::from_utf8(file_buffer) {
+        Ok(content) => {
+            println!("File content as string:\n{}", content);
+        }
+        Err(e) => {
+            println!("Failed to convert file buffer to string: {:?}", e);
+        }
+    }
 }

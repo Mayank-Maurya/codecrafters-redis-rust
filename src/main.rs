@@ -1,25 +1,35 @@
 #![allow(unused_imports)]
+// custom modules
+mod parsers;
+pub mod utils;
+use parsers::args_parse::parse as args_parse;
+use parsers::rdb_file_parser::parse as rdb_file_parse;
+
+// imports
 use std::collections::HashMap;
-use std::env;
+use std::{env, vec};
+use std::fs::File;
 use std::ops::Add;
 use std::rc::Rc;
 use std::io::{self, BufRead, Error, Read, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
-use bytes::{Bytes, BytesMut};
+use bytes::{buf, Bytes, BytesMut};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio_util::codec::{Decoder, Encoder};
 use memchr::memchr;
 use std::sync::{LazyLock, Mutex};
 
-static GLOBAL_HASHMAP: LazyLock<Mutex<HashMap<String, Value>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
-static GLOBAL_HASHMAP_CONFIG: LazyLock<Mutex<HashMap<String, String>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+// global hashmaps
+pub static GLOBAL_HASHMAP: LazyLock<Mutex<HashMap<String, Value>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+pub static GLOBAL_HASHMAP_CONFIG: LazyLock<Mutex<HashMap<String, String>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
+// some definations
 #[derive(Debug)]
 struct BufSplit(usize, usize);
 
 #[derive(Debug, Clone)]
-struct Value {
+pub struct Value {
     value: String,
     px: u128,
     updated_time: u128,
@@ -55,31 +65,14 @@ type RedisResult = Result<Option<(usize, RESPTypes)>, RESPError>;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-    let args: Vec<String> = env::args().collect();
-    for i in 1..args.len() {
-        match args[i].as_str() {
-            "--dir" => {
-                println!("{}", args[i+1]);
-                if let Ok(mut hashmap) = GLOBAL_HASHMAP_CONFIG.lock() {
-                    hashmap.insert("dir".to_string(), args[i+1].clone());
-                } else {
-                    eprintln!("Failed to acquire lock on GLOBAL_HASHMAP_CONFIG");
-                }
-            },
-            "--dbfilename" => {
-                if let Ok(mut hashmap) = GLOBAL_HASHMAP_CONFIG.lock() {
-                    hashmap.insert("dbfilename".to_string(), args[i+1].clone());
-                } else {
-                    eprintln!("Failed to acquire lock on GLOBAL_HASHMAP_CONFIG");
-                }
-            },
-            _ => {
-            }
-        }
-    }
+    //parsing arguments
+    args_parse();
 
+    // parsing rdb file
+    rdb_file_parse();
+
+    // setup connection
     let listener = TcpListener::bind("127.0.0.1:6379").await?;
-
     loop {
         let stream = listener.accept().await;
 
@@ -118,6 +111,7 @@ async fn main() -> io::Result<()> {
             }
         }
     }
+
 }
 
 fn parse_and_decode(buf: &[u8]) -> Option<Vec<u8>> {
@@ -125,7 +119,7 @@ fn parse_and_decode(buf: &[u8]) -> Option<Vec<u8>> {
         return None;
     }
 
-    match parse(buf,0) {
+    match parse_redis_protocol(buf,0) {
         Ok(Some((pos, value))) => {
             return Some(encode(buf, value));
         },
@@ -133,7 +127,7 @@ fn parse_and_decode(buf: &[u8]) -> Option<Vec<u8>> {
     }
 }
 
-fn parse(buf: &[u8], pos: usize) -> RedisResult {
+fn parse_redis_protocol(buf: &[u8], pos: usize) -> RedisResult {
     match buf[pos] {
         // b'+' => simple_string(buf, pos + 1),
         // b'-' => error(buf, pos + 1),

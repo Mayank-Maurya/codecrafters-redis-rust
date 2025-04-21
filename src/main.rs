@@ -257,7 +257,17 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                 "KEYS" => {
                     match v[1].as_str() {
                         "*" => {
-                            todo!()
+                            let value: String;
+                            let mut args: Vec<String> = Vec::new();
+                            if let Ok(hashmap) = GLOBAL_HASHMAP.lock() {
+                                for (k,v) in hashmap.iter() {
+                                    args.push(k.to_string());
+                                    args.push(v.value.clone());
+                                }
+                            } else {
+                                return ans;
+                            }
+                            return encode_array(args);
                         },
                         _ => todo!()
                     }
@@ -290,7 +300,7 @@ fn encode_array(array: Vec<String>) -> Vec<u8> {
     return ans;
 }
 
-fn map_insert(key: String, value: Value) {
+pub fn map_insert(key: String, value: Value) {
     if let Ok(mut hashmap) = GLOBAL_HASHMAP.lock() {
         hashmap.insert(key, value);
     } else {

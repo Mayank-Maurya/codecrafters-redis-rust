@@ -170,7 +170,7 @@ fn get_key_value_pair(mut idx: usize, bytes_vec: &Vec<u8>) -> (String, String) {
     println!("item key Size: {}", key_size);
 
     let key_end_idx = idx + key_size as usize + 1;
-    let key_bytes = &bytes_vec[idx..key_end_idx];
+    let key_bytes = &bytes_vec[idx+1..key_end_idx];
     let key = match String::from_utf8(key_bytes.to_vec()) {
         Ok(s) => s,
         Err(_) => String::from("<Invalid UTF-8>"),
@@ -181,7 +181,7 @@ fn get_key_value_pair(mut idx: usize, bytes_vec: &Vec<u8>) -> (String, String) {
     let value_size: u8 = get_ele_normal(idx, &bytes_vec);
     println!("item Value Size: {}", value_size);
     let value_end_idx = idx + value_size as usize + 1;
-    let value_bytes = &bytes_vec[idx..value_end_idx];
+    let value_bytes = &bytes_vec[idx+1..value_end_idx];
     let value = match String::from_utf8(value_bytes.to_vec()) {
         Ok(s) => s,
         Err(_) => String::from("<Invalid UTF-8>"),

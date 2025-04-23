@@ -262,7 +262,7 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                             if let Ok(hashmap) = GLOBAL_HASHMAP.lock() {
                                 for (k,v) in hashmap.iter() {
                                     args.push(k.to_string());
-                                    args.push(v.value.clone());
+                                    // args.push(v.value.clone());
                                 }
                             } else {
                                 return ans;
@@ -297,6 +297,7 @@ fn encode_array(array: Vec<String>) -> Vec<u8> {
         ans.extend_from_slice(i.as_bytes());
         ans.extend_from_slice(b"\r\n");
     }
+   // println!("{:?}", ans);
     return ans;
 }
 

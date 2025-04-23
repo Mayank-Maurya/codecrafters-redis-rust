@@ -120,7 +120,9 @@ fn parse_db_section(mut idx: usize, size: usize, bytes_vec: &Vec<u8>) {
 
                             let KV = get_key_value_pair(idx, &bytes_vec);
                             let val = Value{ value: KV.1.clone(), px: 0, updated_time: 0};
-                            map_insert(KV.0, val);
+                            map_insert(KV.0.clone(), val);
+                            idx = KV.2.clone();
+                            //println!("index : {}", idx);
                         }
                     }
                 },
@@ -160,7 +162,7 @@ fn get_ele_normal(idx: usize, bytes_vec: &Vec<u8>) -> u8 {
     }
 }
 
-fn get_key_value_pair(mut idx: usize, bytes_vec: &Vec<u8>) -> (String, String) {
+fn get_key_value_pair(mut idx: usize, bytes_vec: &Vec<u8>) -> (String, String, usize) {
     // parse string encoded KV
     
     // skip flag variable
@@ -188,6 +190,6 @@ fn get_key_value_pair(mut idx: usize, bytes_vec: &Vec<u8>) -> (String, String) {
     };
     println!("Key: {}", &value);
     idx = value_end_idx;
-    return (key, value);
+    return (key, value, idx);
     //map_insert(key, val);
 }

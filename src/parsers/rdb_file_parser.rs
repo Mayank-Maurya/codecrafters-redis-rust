@@ -1,5 +1,7 @@
-use std::{fs::File, io::{BufReader, Read, Seek}, os::unix::fs::FileExt, path::{Path, PathBuf}, vec};
-use crate::{map_insert, utils::utils::map_get, Value, GLOBAL_HASHMAP_CONFIG};
+use std::{clone, fs::{self, File}, io::{BufReader, Read, Seek}, os::unix::fs::FileExt, path::{Path, PathBuf}, time::{Duration, Instant, UNIX_EPOCH}};
+use chrono::Utc;
+
+use crate::{ map_insert, utils::utils::map_get, Value, GLOBAL_HASHMAP_CONFIG};
 
 pub fn parse() {
     // get file dir
@@ -36,24 +38,20 @@ pub fn parse() {
 }
 
 fn parse_rdb_file(file_path: String) -> Result<(), std::io::Error> {
-    let file = BufReader::new(File::open(file_path)?);
-    let bytes_vec: Vec<u8> = file.bytes().map(|f| f.unwrap()).collect();
+    let bytes_vec: Vec<u8> = fs::read(file_path)?;
     let mut idx = 0;
     let size = bytes_vec.len();
     while idx < size {
         match bytes_vec.get(idx) {
             Some(b) => {
-                let item: String = format!("{:02x}",b);
-                match item.as_str() {
-                    "fe" => {
+                match b {
+                    0xfe => {
                         // db section found
                         println!("db section starts");
                         parse_db_section(idx + 1, size, &bytes_vec);
                         break;
                     },
-                    _ => {
-
-                    }
+                    _ => {}
                 }
             },
             None => {
@@ -67,10 +65,9 @@ fn parse_rdb_file(file_path: String) -> Result<(), std::io::Error> {
 }
 
 fn parse_db_section(mut idx: usize, size: usize, bytes_vec: &Vec<u8>) {
-    let got_db_idx = false;
     while idx < size {
         // get the index of the db
-        let db_idx = get_ele_normal(idx, &bytes_vec);
+        // let db_idx = get_ele_normal(idx, &bytes_vec);
         idx = idx + 2;
 
         // get hash-table size
@@ -90,40 +87,49 @@ fn parse_db_section(mut idx: usize, size: usize, bytes_vec: &Vec<u8>) {
             // check which type of kv pair is this string or expiry
             match bytes_vec.get(idx) {
                 Some(b) => {
-                    let str = format!("{:02x}",b);
-                    match str.as_str() {
-                        "fc" => {
+                    //let str = format!("{:02x}",b);
+                    match b {
+                        0xfc => {
+                            println!("!!!!!!!!!!milisecond");
                             // read next 8 bytes
+                            println!("raw bytes: {:?}", &bytes_vec[idx+1..idx+9]);
                             let x: [u8; 8] = bytes_vec[idx+1..idx+9].try_into().unwrap();
+                            println!("{:?}", x);
                             let timestamp = u64::from_le_bytes(x);
                             println!("{}", timestamp);
                             idx = idx + 9;
 
                             let KV = get_key_value_pair(idx, &bytes_vec);
-                            let val = Value{ value: KV.1.clone(), px: 0, updated_time: timestamp as u128};
+                            let val = Value{ value: KV.1.clone(), expiry: true, expires_at: timestamp };
                             map_insert(KV.0, val);
+                            idx = KV.2.clone();
                         },
-                        "fd" => {
+                        0xfd => {
+                            println!("!!!!!!!!!!second");
                             // read next 4 bytes
-                            let x: [u8; 8] = bytes_vec[idx+1..idx+5].try_into().unwrap();
-                            let timestamp = u64::from_le_bytes(x);
+                            let x: [u8; 4] = bytes_vec[idx+1..idx+5].try_into().unwrap();
+                            let mut timestamp = u32::from_le_bytes(x) as u64;
+                            // convert to ms
+                            timestamp = timestamp * 1000;
                             println!("{}", timestamp);
                             idx = idx + 5;
 
+
                             let KV = get_key_value_pair(idx, &bytes_vec);
-                            let val = Value{ value: KV.1.clone(), px: 0, updated_time: timestamp as u128};
+                            let val = Value{ value: KV.1.clone(), expiry: true, expires_at: timestamp};
                             map_insert(KV.0, val);
+                            idx = KV.2.clone();
                         },
                         _ => {
                             // parse string encoded KV
-                            println!("normal KV found {}", str);
+                            // println!("normal KV found {}", str);
 
                             let KV = get_key_value_pair(idx, &bytes_vec);
-                            let val = Value{ value: KV.1.clone(), px: 0, updated_time: 0};
+                            let val = Value{ value: KV.1.clone(), expiry: false, expires_at: 0 };
                             map_insert(KV.0.clone(), val);
                             idx = KV.2.clone();
                             //println!("index : {}", idx);
-                        }
+                        },
                     }
                 },
                 None => {
@@ -188,7 +194,7 @@ fn get_key_value_pair(mut idx: usize, bytes_vec: &Vec<u8>) -> (String, String, u
         Ok(s) => s,
         Err(_) => String::from("<Invalid UTF-8>"),
     };
-    println!("Key: {}", &value);
+    // println!("Value: {}", &value);
     idx = value_end_idx;
     return (key, value, idx);
     //map_insert(key, val);

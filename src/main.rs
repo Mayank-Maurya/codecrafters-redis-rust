@@ -2,6 +2,7 @@
 // custom modules
 mod parsers;
 pub mod utils;
+use chrono::{DateTime, TimeDelta, Utc};
 use parsers::args_parse::parse as args_parse;
 use parsers::rdb_file_parser::parse as rdb_file_parse;
 
@@ -12,7 +13,7 @@ use std::fs::File;
 use std::ops::Add;
 use std::rc::Rc;
 use std::io::{self, BufRead, Error, Read, Write};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use bytes::{buf, Bytes, BytesMut};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
@@ -31,8 +32,8 @@ struct BufSplit(usize, usize);
 #[derive(Debug, Clone)]
 pub struct Value {
     value: String,
-    px: u128,
-    updated_time: u128,
+    expiry: bool,
+    expires_at: u64,
 }
 
 #[derive(Debug)]
@@ -209,9 +210,11 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                     return ans;
                 },
                 "SET" => {
-                    let mut val = Value{ value: v[2].clone(), px: 0, updated_time: current_timestamp_millis(),};
+                    let mut val = Value { value: v[2].clone(), expiry: false, expires_at: 0 };
+                    // println!("{}", v[4].clone().parse::<i64>().unwrap());
                     if v.len() > 3 {
-                        val.px = v[4].clone().parse::<u128>().unwrap();
+                        val.expires_at = Utc::now().timestamp_millis() as u64 + v[4].clone().parse::<u64>().unwrap();
+                        val.expiry = true;
                     }
                     map_insert(v[1].clone(), val);
                     //GLOBAL_HASHMAP[v.get_mut(0)] = v[1].clone();
@@ -219,11 +222,11 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                     return ans;
                 },
                 "GET" => {
+                    println!("coming bere");
                     let key = v[1].clone();
                     let val = map_get(key).unwrap();
                     println!("{:?}", val);
-                    let cur_time = current_timestamp_millis();
-                    if cur_time - val.updated_time > val.px && val.px > 0 {
+                    if val.expiry && Utc::now().timestamp_millis() - val.expires_at as i64 > 0 {
                         ans.extend_from_slice(b"$-1\r\n");
                         return ans;
                     }
@@ -316,7 +319,7 @@ fn map_get(key: String) -> Option<Value> {
     None
 }
 
-fn current_timestamp_millis() -> u128 {
+pub fn current_timestamp_millis() -> u128 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")

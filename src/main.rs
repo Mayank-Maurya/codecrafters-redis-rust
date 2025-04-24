@@ -5,6 +5,7 @@ pub mod utils;
 use chrono::{DateTime, TimeDelta, Utc};
 use parsers::args_parse::parse as args_parse;
 use parsers::rdb_file_parser::parse as rdb_file_parse;
+use utils::utils::map_get as map_get_generic;
 
 // imports
 use std::collections::HashMap;
@@ -73,7 +74,11 @@ async fn main() -> io::Result<()> {
     rdb_file_parse();
 
     // setup connection
-    let listener = TcpListener::bind("127.0.0.1:6379").await?;
+    let mut port = "6379".to_string();
+    if let Ok(hashmap) = GLOBAL_HASHMAP_CONFIG.lock() {
+        port = hashmap.get("port").map_or("6379".to_string(), |s| s.to_string());
+    }
+    let listener = TcpListener::bind("127.0.0.1:".to_owned() + port.as_str()).await?;
     loop {
         let stream = listener.accept().await;
 
@@ -139,7 +144,6 @@ fn parse_redis_protocol(buf: &[u8], pos: usize) -> RedisResult {
     }
 }
 
-#[allow(clippy::unnecessary_wraps)]
 fn simple_string(buf: &[u8], pos: usize) -> RedisResult {
     println!("Simple String came");
     Ok(word(buf, pos).map(|(pos, word)| (pos, RESPTypes::String(word))))
@@ -263,7 +267,7 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                             let value: String;
                             let mut args: Vec<String> = Vec::new();
                             if let Ok(hashmap) = GLOBAL_HASHMAP.lock() {
-                                for (k,v) in hashmap.iter() {
+                                for (k, v) in hashmap.iter() {
                                     args.push(k.to_string());
                                     // args.push(v.value.clone());
                                 }

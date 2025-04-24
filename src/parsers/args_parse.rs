@@ -20,6 +20,13 @@ pub fn parse() {
                     eprintln!("Failed to acquire lock on GLOBAL_HASHMAP_CONFIG");
                 }
             },
+            "--port" => {
+                if let Ok(mut hashmap) = GLOBAL_HASHMAP_CONFIG.lock() {
+                    hashmap.insert("port".to_string(), args[i+1].clone());
+                } else {
+                    eprintln!("Failed to acquire lock on GLOBAL_HASHMAP_CONFIG");
+                }
+            },
             _ => {
             }
         }

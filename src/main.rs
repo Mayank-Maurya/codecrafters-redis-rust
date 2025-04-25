@@ -279,6 +279,21 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                         _ => todo!()
                     }
                 },
+                "INFO" => {
+                    match v[1].as_str() {
+                        "replication" => {
+                            ans.extend_from_slice(b"$");
+                            ans.extend_from_slice(b"11");
+                            ans.extend_from_slice(b"\r\n");
+                            ans.extend_from_slice(b"role:master");
+                            ans.extend_from_slice(b"\r\n");
+                            return ans;
+                        },
+                        _ => {
+                            todo!()
+                        }
+                    }
+                }
                 _ => todo!(),
             }
         },

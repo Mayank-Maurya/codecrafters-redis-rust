@@ -27,6 +27,16 @@ pub fn parse() {
                     eprintln!("Failed to acquire lock on GLOBAL_HASHMAP_CONFIG");
                 }
             },
+            "--replicaof" => {
+                println!("{}", args[i+1].clone());
+                let master_config: Vec<&str> = args[i+1].split(" ").collect();
+                if let Ok(mut hashmap) = GLOBAL_HASHMAP_CONFIG.lock() {
+                    hashmap.insert("master_host".to_string(), master_config[0].to_string());
+                    hashmap.insert("master_port".to_string(), master_config[1].to_string());
+                } else {
+                    eprintln!("Failed to acquire lock on GLOBAL_HASHMAP_CONFIG");
+                }
+            }
             _ => {
             }
         }

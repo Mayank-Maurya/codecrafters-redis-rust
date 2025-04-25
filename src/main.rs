@@ -282,10 +282,16 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                 "INFO" => {
                     match v[1].as_str() {
                         "replication" => {
+                            let mut role: &str = "role:master";
+                            if let Ok(hashmap) = GLOBAL_HASHMAP_CONFIG.lock() {
+                                if hashmap.contains_key("master_port") {
+                                    role = "role:slave";
+                                }
+                            }
                             ans.extend_from_slice(b"$");
-                            ans.extend_from_slice(b"11");
+                            ans.extend_from_slice(role.len().to_string().as_bytes());
                             ans.extend_from_slice(b"\r\n");
-                            ans.extend_from_slice(b"role:master");
+                            ans.extend_from_slice(role.as_bytes());
                             ans.extend_from_slice(b"\r\n");
                             return ans;
                         },

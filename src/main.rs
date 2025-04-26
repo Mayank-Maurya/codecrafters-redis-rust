@@ -1,11 +1,13 @@
 #![allow(unused_imports)]
 // custom modules
 mod parsers;
-pub mod utils;
+mod utils;
+mod codec;
 use chrono::{DateTime, TimeDelta, Utc};
+use codec::encoder::{encode_array, encode_bulk_string};
 use parsers::args_parse::parse as args_parse;
 use parsers::rdb_file_parser::parse as rdb_file_parse;
-use utils::utils::map_get as map_get_generic;
+use utils::utils::{generate_random_string, get_key_value_pair_string, map_get as map_get_generic};
 
 // imports
 use std::collections::HashMap;
@@ -282,18 +284,21 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                 "INFO" => {
                     match v[1].as_str() {
                         "replication" => {
-                            let mut role: &str = "role:master";
+                            let mut bulk_string_array: Vec<String> = Vec::new();
+                            let mut role:String = String::from("role:master");
                             if let Ok(hashmap) = GLOBAL_HASHMAP_CONFIG.lock() {
                                 if hashmap.contains_key("master_port") {
-                                    role = "role:slave";
+                                    role = String::from("role:slave");
                                 }
                             }
-                            ans.extend_from_slice(b"$");
-                            ans.extend_from_slice(role.len().to_string().as_bytes());
-                            ans.extend_from_slice(b"\r\n");
-                            ans.extend_from_slice(role.as_bytes());
-                            ans.extend_from_slice(b"\r\n");
-                            return ans;
+                            bulk_string_array.push(role.clone());
+                            if role.contains("master") {
+                                let master_replid = generate_random_string();
+                                let master_repl_offset = 0;
+                                bulk_string_array.push(get_key_value_pair_string(String::from("master_replid"), master_replid, ':'));
+                                bulk_string_array.push(get_key_value_pair_string(String::from("master_repl_offset"), master_repl_offset.to_string(), ':'));
+                            }
+                            return encode_bulk_string(bulk_string_array);
                         },
                         _ => {
                             todo!()
@@ -307,27 +312,6 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
     }
 }
 
-fn encode_array(array: Vec<String>) -> Vec<u8> {
-    let mut ans = Vec::new();
-    let mut length = array.len(); // Get the length of the string
-    let mut length_str = length.to_string(); // Convert the length to a string
-    let mut length_bytes = length_str.as_bytes(); 
-    ans.extend_from_slice(b"*");
-    ans.extend_from_slice(length_bytes);
-    ans.extend_from_slice(b"\r\n");
-    for i in array {
-        length = i.len();
-        length_str = length.to_string();
-        length_bytes = length_str.as_bytes();
-        ans.extend_from_slice(b"$");
-        ans.extend_from_slice(length_bytes);
-        ans.extend_from_slice(b"\r\n");
-        ans.extend_from_slice(i.as_bytes());
-        ans.extend_from_slice(b"\r\n");
-    }
-   // println!("{:?}", ans);
-    return ans;
-}
 
 pub fn map_insert(key: String, value: Value) {
     if let Ok(mut hashmap) = GLOBAL_HASHMAP.lock() {

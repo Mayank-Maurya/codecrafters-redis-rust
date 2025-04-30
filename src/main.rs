@@ -75,6 +75,8 @@ async fn main() -> io::Result<()> {
     // parsing rdb file
     rdb_file_parse();
 
+    // setup new connections
+
     // setup connection
     let mut port = "6379".to_string();
     if let Ok(hashmap) = GLOBAL_HASHMAP_CONFIG.lock() {
@@ -311,7 +313,6 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
         _ => todo!(),
     }
 }
-
 
 pub fn map_insert(key: String, value: Value) {
     if let Ok(mut hashmap) = GLOBAL_HASHMAP.lock() {

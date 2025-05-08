@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::{LazyLock, Mutex}};
+use std::{collections::HashMap, sync::{LazyLock, Mutex}, time::{SystemTime, UNIX_EPOCH}};
 use rand::{distributions::Alphanumeric, Rng};
 
 pub fn map_get<V: Clone>(hash_map: &LazyLock<Mutex<HashMap<String, V>>>, key: String) -> Option<V> {
@@ -23,4 +23,11 @@ pub fn get_key_value_pair_string(key: String, value: String, delimeter: char) ->
     result.push(delimeter);
     result.push_str(&value);
     result
+}
+
+pub fn current_timestamp_millis() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_millis()
 }

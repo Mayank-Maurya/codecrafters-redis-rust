@@ -31,13 +31,15 @@ pub async fn start_master() -> io::Result<()> {
 
 pub async fn start_replica() -> io::Result<()> {
     let host = map_config_get(String::from("master_host")).map_or("6379".to_string(), |s| s.to_string());
-    let mut port = map_config_get(String::from("master_port")).map_or("6379".to_string(), |s| s.to_string());
+    let port = map_config_get(String::from("master_port")).map_or("6379".to_string(), |s| s.to_string());
+    let slave_port = map_config_get(String::from("port")).map_or("6379".to_string(), |s| s.to_string());
+    
     // connect to master
     let master_connection = connect_to_master(String::from(host + ":" + &port)).await;
     match master_connection {
         Ok(stream) => {
             println!("connected to master");
-            handshake(stream).await;
+            handshake(stream, slave_port.clone()).await;
         },
         Err(e) => {
             println!("couldn't to master: {}", e);
@@ -45,8 +47,7 @@ pub async fn start_replica() -> io::Result<()> {
     }
 
     // listen as replica(slave)
-    port = map_config_get(String::from("port")).map_or("6379".to_string(), |s| s.to_string());
-    start_listener(port).await
+    start_listener(slave_port).await
 
     // handshake
     

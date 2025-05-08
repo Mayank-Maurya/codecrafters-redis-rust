@@ -2,10 +2,7 @@ use chrono::Utc;
 use memchr::memchr;
 
 use crate::{
-    codec::encoder::{encode_array, encode_bulk_string},
-    store::store::{map_get, map_insert, GLOBAL_HASHMAP, GLOBAL_HASHMAP_CONFIG},
-    utils::utils::{generate_random_string, get_key_value_pair_string},
-    BufSplit, RESPError, RESPTypes, RedisResult, Value,
+    codec::encoder::{encode_array, encode_bulk_string}, server::handshake::send_command, store::store::{map_get, map_insert, GLOBAL_HASHMAP, GLOBAL_HASHMAP_CONFIG}, utils::utils::{generate_random_string, get_key_value_pair_string}, BufSplit, RESPError, RESPTypes, RedisResult, Value
 };
 
 pub fn parse_and_decode(buf: &[u8]) -> Option<Vec<u8>> {
@@ -209,6 +206,27 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                         todo!()
                     }
                 },
+                "REPLCONF" => match v[1].as_str() {
+                    "listening-port" => {
+                        let listening_port = v[2].as_str();
+                        println!("came here REPLCONF");
+                        ans.extend_from_slice(b"+OK\r\n");
+                        return ans; 
+                    },
+                    "capa" => {
+                        match v[2].as_str() {
+                            "psync2" => {
+                                println!("came here psync2");
+                                ans.extend_from_slice(b"+OK\r\n");
+                                return ans; 
+                            },
+                            _ => {
+                                todo!()
+                            }
+                        }
+                    },
+                    _ => todo!(),
+                }
                 _ => todo!(),
             }
         }

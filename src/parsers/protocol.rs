@@ -94,7 +94,7 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
     match value {
         RESPTypes::Array(v) => {
             let mut ans: Vec<u8> = Vec::new();
-            // println!("{}",v[0]);
+            println!("{}",v[0]);
             match v[0].as_str() {
                 "ECHO" => {
                     let length = v[1].len(); // Get the length of the string

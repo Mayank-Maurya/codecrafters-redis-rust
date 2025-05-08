@@ -8,5 +8,8 @@ pub async fn handshake(mut stream: TcpStream) {
     let mut args = Vec::new();
     args.push("PING".to_string());
     let response =encode_array(args);
-    stream.write_all(&response);
+    if let Err(e) = stream.write_all(&response).await {
+        eprintln!("Failed to write to stream: {}", e);
+    }
+    println!("sends command PING");
 }

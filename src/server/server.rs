@@ -18,6 +18,8 @@ use crate::parsers::rdb_file_parser::parse as rdb_file_parser;
 use crate::store::store::{map_config_get, GLOBAL_HASHMAP_CONFIG};
 use crate::{BufSplit, RESPError, RESPTypes, RedisResult, Value};
 
+use super::handshake::handshake;
+
 pub async fn start_master() -> io::Result<()> {
     // parsing rdb file
     rdb_file_parser();
@@ -35,6 +37,7 @@ pub async fn start_replica() -> io::Result<()> {
     match master_connection {
         Ok(stream) => {
             println!("connected to master");
+            handshake(stream).await;
         },
         Err(e) => {
             println!("couldn't to master: {}", e);
@@ -44,6 +47,8 @@ pub async fn start_replica() -> io::Result<()> {
     // listen as replica(slave)
     port = map_config_get(String::from("port")).map_or("6379".to_string(), |s| s.to_string());
     start_listener(port).await
+
+    // handshake
     
     // start sync process
 }

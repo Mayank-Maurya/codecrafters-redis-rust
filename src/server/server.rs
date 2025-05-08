@@ -31,7 +31,7 @@ pub async fn start_replica() -> io::Result<()> {
     let host = map_config_get(String::from("master_host")).map_or("6379".to_string(), |s| s.to_string());
     let mut port = map_config_get(String::from("master_port")).map_or("6379".to_string(), |s| s.to_string());
     // connect to master
-    let master_connection = connect_to_master(String::from(host + &port)).await;
+    let master_connection = connect_to_master(String::from(host + ":" + &port)).await;
     match master_connection {
         Ok(stream) => {
             println!("connected to master");

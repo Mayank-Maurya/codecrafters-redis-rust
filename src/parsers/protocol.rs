@@ -226,7 +226,30 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                         }
                     },
                     _ => todo!(),
-                }
+                },
+                "PSYNC" => match v[1].as_str() {
+                    "?" => {
+                        let master_offset = v[2].as_str();
+                        println!("came here REPLCONF");
+                        let master_replid = generate_random_string();
+                        let res = format!("+FULLRESYNC {}{}\r\n", master_replid, "0");
+                        ans.extend_from_slice(res.as_bytes());
+                        return ans; 
+                    },
+                    "capa" => {
+                        match v[2].as_str() {
+                            "psync2" => {
+                                println!("came here psync2");
+                                ans.extend_from_slice(b"+OK\r\n");
+                                return ans; 
+                            },
+                            _ => {
+                                todo!()
+                            }
+                        }
+                    },
+                    _ => todo!(),
+                },
                 _ => todo!(),
             }
         }

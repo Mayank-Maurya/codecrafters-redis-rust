@@ -4,7 +4,7 @@ use chrono::Utc;
 use memchr::memchr;
 
 use crate::{
-    codec::encoder::{encode_array, encode_bulk_string}, server::handshake::{handshake_2, handshake_3, send_command}, store::store::{map_config_get, map_get, map_insert, GLOBAL_HASHMAP, GLOBAL_HASHMAP_CONFIG, IS_OK}, utils::utils::{generate_random_string, get_key_value_pair_string}, BufSplit, RESPError, RESPTypes, RedisResult, Value
+    codec::encoder::{encode_array, encode_bulk_string}, server::handshake::{handshake_2, handshake_3, handshake_4, send_command}, store::store::{map_config_get, map_get, map_insert, GLOBAL_HASHMAP, GLOBAL_HASHMAP_CONFIG, IS_OK}, utils::utils::{generate_random_string, get_key_value_pair_string}, BufSplit, RESPError, RESPTypes, RedisResult, Value
 };
 
 pub fn parse_and_decode_handshake(buf: &[u8], flag: bool) -> Option<Vec<u8>> {
@@ -137,6 +137,8 @@ fn encode(buf: &[u8], value: RESPTypes, mut flag: bool) -> Vec<u8> {
                     if IS_OK.load(Ordering::SeqCst) == false {
                         IS_OK.store(true, Ordering::SeqCst);
                         return handshake_3();
+                    } else {
+                        return handshake_4();
                     }
                     println!("doing nothing");
                 },

@@ -31,6 +31,17 @@ pub fn handshake_3() -> Vec<u8> {
     // send_command(stream,response).await
 }
 
+pub fn handshake_4() -> Vec<u8> {
+    // send PING command
+    let mut args = Vec::new();
+    args.push("PSYNC".to_string());
+    args.push("?".to_string());
+    args.push("-1".to_string());
+    println!("sends command psync -1");
+    return encode_array(args);
+    // send_command(stream,response).await
+}
+
 pub async fn send_command(mut stream: TcpStream, messages: Vec<u8>) -> TcpStream {
     if let Err(e) = stream.write_all(&messages).await {
         eprintln!("Failed to write to stream: {}", e);

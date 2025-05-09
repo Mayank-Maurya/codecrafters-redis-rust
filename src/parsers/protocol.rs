@@ -232,7 +232,7 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                         let master_offset = v[2].as_str();
                         println!("came here REPLCONF");
                         let master_replid = generate_random_string();
-                        let res = format!("+FULLRESYNC {}{}\r\n", master_replid, "0");
+                        let res = format!("+FULLRESYNC {}{}\r\n", master_replid, " 0");
                         ans.extend_from_slice(res.as_bytes());
                         return ans; 
                     },

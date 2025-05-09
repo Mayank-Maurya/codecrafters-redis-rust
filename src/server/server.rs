@@ -13,12 +13,12 @@ use tokio_util::codec::{Decoder, Encoder};
 use memchr::memchr;
 use std::sync::{LazyLock, Mutex};
 
+use crate::parsers::handshake_parser::parse_and_decode_handshake;
 use crate::parsers::protocol::parse_and_decode;
 use crate::parsers::rdb_file_parser::parse as rdb_file_parser;
+use crate::server::handshake::handshake_1;
 use crate::store::store::{map_config_get, GLOBAL_HASHMAP_CONFIG};
 use crate::{BufSplit, RESPError, RESPTypes, RedisResult, Value};
-
-use super::handshake::handshake;
 
 pub async fn start_master() -> io::Result<()> {
     // parsing rdb file
@@ -37,9 +37,35 @@ pub async fn start_replica() -> io::Result<()> {
     // connect to master
     let master_connection = connect_to_master(String::from(host + ":" + &port)).await;
     match master_connection {
-        Ok(stream) => {
+        Ok(mut stream) => {
             println!("connected to master");
-            handshake(stream, slave_port.clone()).await;
+            let flag: bool = false;
+            tokio::spawn(async move {
+                let mut buf: Vec<u8> = vec![0;512];
+                stream = handshake_1(stream).await;
+
+                loop {
+                    match stream.read(&mut buf).await {
+                        Ok(0) => {
+                            // println!("nothing came");
+                        },
+                        Ok(n) => {
+                            // parse the string and get the result
+                            if let Some(result) = parse_and_decode_handshake(&buf[..n], flag) {
+                                if let Err(e) = stream.write_all(&result).await {
+                                    eprintln!("Failed to write to stream: {}", e);
+                                }
+                            } else {
+                                println!("Failed to parse the message.");
+                            }
+                        },
+                        Err(e) => {
+                            eprintln!("failed to read from stream; err = {:?}", e);
+                            return;
+                        }
+                    };
+                }
+            });
         },
         Err(e) => {
             println!("couldn't to master: {}", e);

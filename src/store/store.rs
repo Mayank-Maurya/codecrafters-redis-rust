@@ -1,9 +1,11 @@
-use std::{collections::HashMap, sync::{LazyLock, Mutex}};
+use std::{collections::HashMap, sync::{atomic::AtomicBool, LazyLock, Mutex}};
 use crate::Value;
 
 // global hashmaps
 pub static GLOBAL_HASHMAP: LazyLock<Mutex<HashMap<String, Value>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 pub static GLOBAL_HASHMAP_CONFIG: LazyLock<Mutex<HashMap<String, String>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+pub static is_slave: AtomicBool = AtomicBool::new(false);
+pub static IS_OK: AtomicBool = AtomicBool::new(false);
 
 pub fn map_insert(key: String, value: Value) {
     if let Ok(mut hashmap) = GLOBAL_HASHMAP.lock() {

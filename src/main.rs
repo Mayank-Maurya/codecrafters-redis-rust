@@ -14,10 +14,11 @@ use parsers::args_parse::parse as args_parse;
 use parsers::rdb_file_parser::parse as rdb_file_parse;
 use server::server::{start_listener, start_master, start_replica};
 use utils::utils::{generate_random_string, get_key_value_pair_string, map_get as map_get_generic};
-use store::store::{map_config_get, map_get, map_insert, GLOBAL_HASHMAP, GLOBAL_HASHMAP_CONFIG};
+use store::store::{is_slave, map_config_get, map_get, map_insert, GLOBAL_HASHMAP, GLOBAL_HASHMAP_CONFIG};
 
 // imports
 use std::collections::HashMap;
+use std::sync::atomic::Ordering;
 use std::{env, vec};
 use std::fs::File;
 use std::ops::Add;
@@ -76,18 +77,15 @@ async fn main() -> io::Result<()> {
     args_parse();
 
     // be a master or slave
-    let is_slave;
     match map_config_get(String::from("master_host")) {
         Some(value) => {
-            is_slave = value.len() > 0;
+            is_slave.store(value.len() > 0, Ordering::SeqCst);
         },
-        None => {
-            is_slave = false;
-        }
+        None => {}
     }
 
     // start listening as master or slave
-    if is_slave {
+    if is_slave.load(Ordering::SeqCst) {
         match start_replica().await {
             Ok(result) => {
                 

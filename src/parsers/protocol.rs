@@ -20,7 +20,7 @@ pub fn parse_and_decode(buf: &[u8]) -> Option<Vec<u8>> {
 
 fn parse_redis_protocol(buf: &[u8], pos: usize) -> RedisResult {
     match buf[pos] {
-        // b'+' => simple_string(buf, pos + 1),
+        b'+' => simple_string(buf, pos + 1),
         // b'-' => error(buf, pos + 1),
         // b'$' => bulk_string(buf, pos + 1),
         // b':' => resp_int(buf, pos + 1),

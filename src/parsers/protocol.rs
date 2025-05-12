@@ -5,7 +5,7 @@ use crate::{
     codec::encoder::{encode_array, encode_bulk_string}, server::handshake::send_command, store::store::{map_get, map_insert, GLOBAL_HASHMAP, GLOBAL_HASHMAP_CONFIG}, utils::utils::{generate_random_string, get_key_value_pair_string}, BufSplit, RESPError, RESPTypes, RedisResult, Value
 };
 
-pub fn parse_and_decode(buf: &[u8]) -> Option<Vec<u8>> {
+pub fn parse_and_decode(buf: &[u8]) -> Option<(Vec<u8>, String)> {
     if buf.is_empty() {
         return None;
     }
@@ -87,10 +87,11 @@ fn array(buf: &[u8], mut pos: usize) -> RedisResult {
     Err(RESPError::IntParseFailure)
 }
 
-fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
+fn encode(buf: &[u8], value: RESPTypes) -> (Vec<u8>, String) {
     match value {
         RESPTypes::Array(v) => {
             let mut ans: Vec<u8> = Vec::new();
+            let mut additional_info: String = String::new(); // Default value is an empty string
             println!("{}",v[0]);
             match v[0].as_str() {
                 "ECHO" => {
@@ -102,12 +103,12 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                     ans.extend_from_slice(b"\r\n");
                     ans.extend_from_slice(v[1].as_bytes());
                     ans.extend_from_slice(b"\r\n");
-                    return ans;
-                }
+                    return (ans, additional_info);
+                },
                 "PING" => {
                     ans.extend_from_slice(b"+PONG\r\n");
-                    return ans;
-                }
+                    return (ans, additional_info);
+                },
                 "SET" => {
                     let mut val = Value {
                         value: v[2].clone(),
@@ -123,8 +124,8 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                     map_insert(v[1].clone(), val);
                     //GLOBAL_HASHMAP[v.get_mut(0)] = v[1].clone();
                     ans.extend_from_slice(b"+OK\r\n");
-                    return ans;
-                }
+                    return (ans, additional_info);
+                },
                 "GET" => {
                     println!("coming bere");
                     let key = v[1].clone();
@@ -132,7 +133,7 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                     println!("{:?}", val);
                     if val.expiry && Utc::now().timestamp_millis() - val.expires_at as i64 > 0 {
                         ans.extend_from_slice(b"$-1\r\n");
-                        return ans;
+                        return (ans, additional_info);
                     }
                     let length = val.value.len(); // Get the length of the string
                     let length_str = length.to_string(); // Convert the length to a string
@@ -142,20 +143,20 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                     ans.extend_from_slice(b"\r\n");
                     ans.extend_from_slice(val.value.as_bytes());
                     ans.extend_from_slice(b"\r\n");
-                    return ans;
-                }
+                    return (ans, additional_info);
+                },
                 "CONFIG" => match v[1].as_str() {
                     "GET" => {
                         let value: String;
                         if let Ok(hashmap) = GLOBAL_HASHMAP_CONFIG.lock() {
                             value = hashmap.get(&v[2]).cloned().unwrap();
                         } else {
-                            return ans;
+                            return (ans, additional_info);
                         }
                         let mut args = Vec::new();
                         args.push(v[2].clone());
                         args.push(value);
-                        return encode_array(args);
+                        return (encode_array(args), additional_info);
                     }
                     _ => todo!(),
                 },
@@ -169,13 +170,13 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                                     args.push(k.to_string());
                                 }
                             } else {
-                                return ans;
+                                return (ans, additional_info);
                             }
-                            return encode_array(args);
+                            return (encode_array(args), additional_info);
                         }
                         _ => todo!(),
                     }
-                }
+                },
                 "INFO" => match v[1].as_str() {
                     "replication" => {
                         let mut bulk_string_array: Vec<String> = Vec::new();
@@ -200,7 +201,7 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                                 ':',
                             ));
                         }
-                        return encode_bulk_string(bulk_string_array);
+                        return (encode_bulk_string(bulk_string_array), additional_info);
                     }
                     _ => {
                         todo!()
@@ -211,14 +212,14 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                         let listening_port = v[2].as_str();
                         println!("came here REPLCONF");
                         ans.extend_from_slice(b"+OK\r\n");
-                        return ans; 
+                        return (ans, additional_info); 
                     },
                     "capa" => {
                         match v[2].as_str() {
                             "psync2" => {
                                 println!("came here psync2");
                                 ans.extend_from_slice(b"+OK\r\n");
-                                return ans; 
+                                return (ans, additional_info); 
                             },
                             _ => {
                                 todo!()
@@ -229,19 +230,19 @@ fn encode(buf: &[u8], value: RESPTypes) -> Vec<u8> {
                 },
                 "PSYNC" => match v[1].as_str() {
                     "?" => {
-                        let master_offset = v[2].as_str();
+                        let master_offset: &str = v[2].as_str();
                         println!("came here REPLCONF");
                         let master_replid = generate_random_string();
                         let res = format!("+FULLRESYNC {}{}\r\n", master_replid, " 0");
                         ans.extend_from_slice(res.as_bytes());
-                        return ans; 
+                        return (ans, String::from("RDB_SYNC")); 
                     },
                     "capa" => {
                         match v[2].as_str() {
                             "psync2" => {
                                 println!("came here psync2");
                                 ans.extend_from_slice(b"+OK\r\n");
-                                return ans; 
+                                return (ans, additional_info); 
                             },
                             _ => {
                                 todo!()

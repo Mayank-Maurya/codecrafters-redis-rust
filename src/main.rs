@@ -30,7 +30,8 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio_util::codec::{Decoder, Encoder};
 use memchr::memchr;
-use std::sync::{LazyLock, Mutex};
+use std::sync::{Arc, LazyLock};
+use tokio::sync::Mutex as tokioMutex;
 
 // some definations
 #[derive(Debug)]
@@ -70,6 +71,8 @@ impl From<std::io::Error> for RESPError {
 }
 
 type RedisResult = Result<Option<(usize, RESPTypes)>, RESPError>;
+pub type SharedTcpStream = Arc<tokioMutex<TcpStream>>;
+
 
 #[tokio::main]
 async fn main() -> io::Result<()> {

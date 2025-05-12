@@ -27,3 +27,4 @@ tokio-util = {  version = "0.7.14", features = ["full"] }
 memchr = "2.3.0"
 chrono = "0.4"
 rand = "0.8"
+base64 = "0.21"
